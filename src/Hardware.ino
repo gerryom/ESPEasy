@@ -215,7 +215,8 @@ void addSwitchPlugin(byte taskIndex, byte gpio, const String& name, bool activeL
     name,         // name
     gpio,         // pin1
     -1,            // pin2
-    -1);           // pin3
+    -1,            // pin3
+    -1);           // pin4
   Settings.TaskDevicePin1PullUp[taskIndex] = true;
   if (activeLow)
     Settings.TaskDevicePluginConfig[taskIndex][2] = 1; // PLUGIN_001_BUTTON_TYPE_PUSH_ACTIVE_LOW;

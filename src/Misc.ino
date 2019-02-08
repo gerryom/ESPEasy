@@ -1161,6 +1161,7 @@ void ResetFactory()
     Settings.TaskDevicePin1[x] = -1;
     Settings.TaskDevicePin2[x] = -1;
     Settings.TaskDevicePin3[x] = -1;
+    Settings.TaskDevicePin4[x] = -1;
     Settings.TaskDevicePin1PullUp[x] = true;
     Settings.TaskDevicePin1Inversed[x] = false;
     for (byte y = 0; y < CONTROLLER_MAX; y++)

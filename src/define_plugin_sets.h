@@ -452,11 +452,11 @@ To create/register a plugin, you have to :
 //    #define USES_P016   // IR
     #define USES_P017   // PN532
 //    #define USES_P018   // Dust
-//    #define USES_P019   // PCF8574
+    #define USES_P019   // PCF8574
 
 //    #define USES_P020   // Ser2Net
-    #define USES_P021   // Level
-//    #define USES_P022   // PCA9685
+//    #define USES_P021   // Level
+    #define USES_P022   // PCA9685
     #define USES_P023   // OLED
 //    #define USES_P024   // MLX90614
 //    #define USES_P025   // ADS1115
@@ -466,7 +466,7 @@ To create/register a plugin, you have to :
     #define USES_P029   // Output
 
 //    #define USES_P030   // BMP280
-    #define USES_P031   // SHT1X
+//    #define USES_P031   // SHT1X
 //    #define USES_P032   // MS5611
     #define USES_P033   // Dummy
     #define USES_P034   // DHT12
@@ -474,12 +474,12 @@ To create/register a plugin, you have to :
 //    #define USES_P036   // FrameOLED
     #define USES_P037   // MQTTImport
 //    #define USES_P038   // NeoPixel
-    #define USES_P039   // ID12
+//    #define USES_P039   // ID12
 
 //    #define USES_P041   // NeoClock
 //    #define USES_P042   // Candle
     #define USES_P043   // ClkOutput
-    #define USES_P044   // P1WifiGateway
+//    #define USES_P044   // P1WifiGateway
 
     #define USES_P048   // motor Motoshield_v2
 //    #define USES_P049   // MHZ19
@@ -488,7 +488,10 @@ To create/register a plugin, you have to :
 //    #define USES_P056   // SDS011-Dust
     #define USES_P059   // Encoder
 
-    #define USES_P063   // TTP229_KeyPad
+//    #define USES_P063   // TTP229_KeyPad
+#define USES_P200   // TTP229_KeyPad
+#define USES_P201   // TTP229_KeyPad
+
 #endif
 
 

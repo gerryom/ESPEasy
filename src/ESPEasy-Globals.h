@@ -370,6 +370,8 @@
 #define DEVICE_TYPE_SINGLE                  1  // connected through 1 datapin
 #define DEVICE_TYPE_DUAL                    2  // connected through 2 datapins
 #define DEVICE_TYPE_TRIPLE                  3  // connected through 3 datapins
+#define DEVICE_TYPE_QUADRUPLE               4  // connected through 3 datapins
+
 #define DEVICE_TYPE_ANALOG                 10  // AIN/tout pin
 #define DEVICE_TYPE_I2C                    20  // connected through I2C
 #define DEVICE_TYPE_DUMMY                  99  // Dummy device, has no physical connection
@@ -849,6 +851,7 @@ struct SettingsStruct
     TaskDevicePin1[task] = -1;
     TaskDevicePin2[task] = -1;
     TaskDevicePin3[task] = -1;
+    TaskDevicePin4[task] = -1;
     TaskDevicePort[task] = 0;
     TaskDevicePin1PullUp[task] = false;
     for (byte cv = 0; cv < PLUGIN_CONFIGVAR_MAX; ++cv) {
@@ -916,6 +919,7 @@ struct SettingsStruct
       int8_t        TaskDevicePin1[TASKS_MAX];
       int8_t        TaskDevicePin2[TASKS_MAX];
       int8_t        TaskDevicePin3[TASKS_MAX];
+      int8_t        TaskDevicePin4[TASKS_MAX];
       byte          TaskDevicePort[TASKS_MAX];
     };
     int8_t        TaskDevicePin[4][TASKS_MAX];
@@ -1437,7 +1441,7 @@ struct DeviceStruct
     TimerOption(false), TimerOptional(false), DecimalsOnly(false) {}
 
   bool connectedToGPIOpins() {
-    return (Type >= DEVICE_TYPE_SINGLE && Type <= DEVICE_TYPE_TRIPLE);
+    return (Type >= DEVICE_TYPE_SINGLE && Type <= DEVICE_TYPE_QUADRUPLE);
   }
 
 

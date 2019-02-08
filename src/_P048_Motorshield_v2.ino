@@ -11,6 +11,7 @@
 
 
 #include <Adafruit_MotorShield.h>
+#include <AccelStepper.h>
 
 #define PLUGIN_048
 #define PLUGIN_ID_048         48
@@ -22,11 +23,18 @@ uint8_t Plugin_048_MotorShield_address = 0x60;
 int Plugin_048_MotorStepsPerRevolution = 200;
 int Plugin_048_StepperSpeed = 10;
 
+Adafruit_MotorShield AFMS;
+Adafruit_StepperMotor *myAFStepper[2];
+AccelStepper *myAstepper[2];
+int stepType[2];
+
+void forwardstepM1();
+void backwardstepM1();
+void forwardstepM2();
+void backwardstepM2();
+
 boolean Plugin_048(byte function, struct EventStruct *event, String& string) {
 	boolean success = false;
-
-	Adafruit_MotorShield AFMS;
-
 
 
 	switch (function) {
@@ -38,8 +46,8 @@ boolean Plugin_048(byte function, struct EventStruct *event, String& string) {
 			Device[deviceCount].Ports = 0;
 			Device[deviceCount].PullUpOption = false;
 			Device[deviceCount].InverseLogicOption = false;
-			Device[deviceCount].FormulaOption = false;
-			Device[deviceCount].ValueCount = 0;
+			Device[deviceCount].FormulaOption = true;
+			Device[deviceCount].ValueCount = 2;
 			Device[deviceCount].SendDataOption = false;
 			Device[deviceCount].TimerOption = false;
 			break;
@@ -86,22 +94,28 @@ boolean Plugin_048(byte function, struct EventStruct *event, String& string) {
 			Plugin_048_MotorShield_address = PCONFIG(0);
 			Plugin_048_MotorStepsPerRevolution = PCONFIG(1);
 			Plugin_048_StepperSpeed = PCONFIG(2);
+			AFMS = Adafruit_MotorShield(Plugin_048_MotorShield_address);
+			AFMS.begin();
+			myAFStepper[0] = AFMS.getStepper(Plugin_048_MotorStepsPerRevolution, 1);
+			myAFStepper[1] = AFMS.getStepper(Plugin_048_MotorStepsPerRevolution, 2);
+
+			myAstepper[0] = (AccelStepper*) new AccelStepper(forwardstepM1, backwardstepM1);
+			myAstepper[1] = (AccelStepper*) new AccelStepper(forwardstepM2, backwardstepM2);
+
+			stepType[0]=SINGLE;
+			stepType[1]=SINGLE;
 
 			success = true;
 			break;
 		}
 
-		case PLUGIN_READ: {
-
-			success = false;
-			break;
-		}
 
 		case PLUGIN_WRITE: {
 			String cmd = parseString(string, 1);
 
 			// Commands:
 			// MotorShieldCMD,<DCMotor>,<Motornumber>,<Forward/Backward/Release>,<Speed>
+			// MotorShieldCMD,<Stepper>,<Motornumber>,<Forward/Backward/Release>,<Steps>,<SINGLE/DOUBLE/INTERLEAVE/MICROSTEP>
 
 			if (cmd.equalsIgnoreCase(F("MotorShieldCMD")))
 			{
@@ -115,47 +129,36 @@ boolean Plugin_048(byte function, struct EventStruct *event, String& string) {
 				int p4_int;
 				const bool param2_is_int = validIntFromString(param2, p2_int);
 				const bool param4_is_int = validIntFromString(param4, p4_int);
+				bool validRequest = true;
 
-				// Create the motor shield object with the default I2C address
-				AFMS = Adafruit_MotorShield(Plugin_048_MotorShield_address);
 				String log = F("MotorShield: Address: 0x");
 				log += String(Plugin_048_MotorShield_address,HEX);
 				addLog(LOG_LEVEL_DEBUG, log);
 
+				// set direction
+				int direction = 0;
+				if (param3.equalsIgnoreCase(F("Forward")))
+					direction = FORWARD;
+				else if (param3.equalsIgnoreCase(F("Backward")))
+					direction = BACKWARD;
+				else if (param3.equalsIgnoreCase(F("Release")))
+					direction = RELEASE;
+				else
+					validRequest = false;
+
+
+				// MotorShieldCMD,<DCMotor>,<Motornumber>,<Forward/Backward/Release>,<Speed>
 				if (param1.equalsIgnoreCase(F("DCMotor"))) {
-					if (param2_is_int && p2_int > 0 && p2_int < 5)
+					if (param2_is_int && p2_int > 0 && p2_int < 5 && validRequest)
 					{
 						Adafruit_DCMotor *myMotor;
 						myMotor = AFMS.getMotor(p2_int);
-						if (param3.equalsIgnoreCase(F("Forward")))
-						{
-							byte speed = 255;
-							if (param4_is_int && p4_int >= 0 && p4_int <= 255)
-								speed = p4_int;
-							AFMS.begin();
-							addLog(LOG_LEVEL_INFO, String(F("DCMotor")) + param2 + String(F("->Forward Speed: ")) + String(speed));
-							myMotor->setSpeed(speed);
-							myMotor->run(FORWARD);
-							success = true;
-						}
-						if (param3.equalsIgnoreCase(F("Backward")))
-						{
-							byte speed = 255;
-							if (param4_is_int && p4_int >= 0 && p4_int <= 255)
-								speed = p4_int;
-							AFMS.begin();
-							addLog(LOG_LEVEL_INFO, String(F("DCMotor")) + param2 + String(F("->Backward Speed: ")) + String(speed));
-							myMotor->setSpeed(speed);
-							myMotor->run(BACKWARD);
-							success = true;
-						}
-						if (param3.equalsIgnoreCase(F("Release")))
-						{
-							AFMS.begin();
-							addLog(LOG_LEVEL_INFO, String(F("DCMotor")) + param2 + String(F("->Release")));
-							myMotor->run(RELEASE);
-							success = true;
-						}
+						byte speed = 255;
+						if (param4_is_int && p4_int >= 0 && p4_int <= 255)
+							speed = p4_int;
+						myMotor->setSpeed(speed);
+						myMotor->run(direction);
+						success = true;
 					}
 				}
 
@@ -166,9 +169,13 @@ boolean Plugin_048(byte function, struct EventStruct *event, String& string) {
 					// If you're using M3 and M4 indicate port 2
 					if (param2_is_int && p2_int > 0 && p2_int < 3)
 					{
-						Adafruit_StepperMotor *myStepper;
-						myStepper = AFMS.getStepper(Plugin_048_MotorStepsPerRevolution, p2_int);
+						Adafruit_StepperMotor *myStepper =  myAFStepper[p2_int-1];
 						myStepper->setSpeed(Plugin_048_StepperSpeed);
+						AccelStepper *Astepper =  (AccelStepper *)myAstepper[p2_int-1];
+
+						Astepper->setMaxSpeed(200);
+						Astepper->setAcceleration(50);
+
 						if (loglevelActiveFor(LOG_LEVEL_DEBUG_MORE)) {
 							String log = F("MotorShield: StepsPerRevolution: ");
 							log += String(Plugin_048_MotorStepsPerRevolution);
@@ -177,106 +184,90 @@ boolean Plugin_048(byte function, struct EventStruct *event, String& string) {
 							addLog(LOG_LEVEL_DEBUG_MORE, log);
 						}
 
-						if (param3.equalsIgnoreCase(F("Forward")))
+
+						// set step Type
+						if (param5.equalsIgnoreCase(F("SINGLE")))
+							stepType[p2_int-1] = SINGLE;
+						else if (param5.equalsIgnoreCase(F("DOUBLE")))
+							stepType[p2_int-1] = DOUBLE;
+						else if (param5.equalsIgnoreCase(F("INTERLEAVE")))
+							stepType[p2_int-1] = INTERLEAVE;
+						else if (param5.equalsIgnoreCase(F("MICROSTEP")))
+							stepType[p2_int-1] = MICROSTEP;
+						else	if (param5.equalsIgnoreCase(F("info")))
 						{
-							if (param4_is_int && p4_int != 0)
-							{
-								int steps = p4_int;
-								if (param5.equalsIgnoreCase(F("SINGLE")))
-								{
-									AFMS.begin();
-									addLog(LOG_LEVEL_INFO, String(F("Stepper")) + param2 + String(F("->Forward Steps: ")) +
-											steps + String(F(" SINGLE")));
-									myStepper->step(steps, FORWARD, SINGLE);
-									success = true;
-								}
-								if (param5.equalsIgnoreCase(F("DOUBLE")))
-								{
-									AFMS.begin();
-									addLog(LOG_LEVEL_INFO, String(F("Stepper")) + param2 + String(F("->Forward Steps: ")) +
-											steps + String(F(" DOUBLE")));
-									myStepper->step(steps, FORWARD, DOUBLE);
-									success = true;
-								}
-								if (param5.equalsIgnoreCase(F("INTERLEAVE")))
-								{
-									AFMS.begin();
-									addLog(LOG_LEVEL_INFO, String(F("Stepper")) + param2 + String(F("->Forward Steps: ")) +
-											steps + String(F(" INTERLEAVE")));
-									myStepper->step(steps, FORWARD, INTERLEAVE);
-									success = true;
-								}
-								if (param5.equalsIgnoreCase(F("MICROSTEP")))
-								{
-									AFMS.begin();
-									addLog(LOG_LEVEL_INFO, String(F("Stepper")) + param2 + String(F("->Forward Steps: ")) +
-											steps + String(F(" MICROSTEP")));
-									myStepper->step(steps, FORWARD, MICROSTEP);
-									success = true;
-								}
+							for (int i=1;i>=0;i--) {
+								addLog(LOG_LEVEL_INFO, String(F("//////////////////////")));
+								addLog(LOG_LEVEL_INFO, String(F("--- stepper info ")) + i + String(F(" --- ")));
+								addLog(LOG_LEVEL_INFO, String(F("   current position:"))	+ myAstepper[i]->currentPosition());
+								addLog(LOG_LEVEL_INFO, String(F("   target position :"))	+ myAstepper[i]->targetPosition());
+								addLog(LOG_LEVEL_INFO, String(F("   is running      :"))	+ myAstepper[i]->isRunning());
+								addLog(LOG_LEVEL_INFO, String(F("   distance to     :"))	+ myAstepper[i]->distanceToGo());
+								addLog(LOG_LEVEL_INFO, String(F("   speed           :"))	+ myAstepper[i]->speed());
+								addLog(LOG_LEVEL_INFO, String(F("   max speed       :"))	+ myAstepper[i]->maxSpeed());
+								addLog(LOG_LEVEL_INFO, String(F("//////////////////////")));
 							}
-						}
+						} else
+							validRequest = false;
 
-						if (param3.equalsIgnoreCase(F("Backward")))
+						if (param4_is_int && p4_int != 0 && validRequest)
 						{
-							if (param4_is_int && p4_int != 0)
-							{
-								int steps = p4_int;
-								if (param5.equalsIgnoreCase(F("SINGLE")))
-								{
-									AFMS.begin();
-									addLog(LOG_LEVEL_INFO, String(F("Stepper")) + param2 + String(F("->Backward Steps: ")) +
-											steps + String(F(" SINGLE")));
-									myStepper->step(steps, BACKWARD, SINGLE);
-									success = true;
-								}
-								if (param5.equalsIgnoreCase(F("DOUBLE")))
-								{
-									AFMS.begin();
-									addLog(LOG_LEVEL_INFO, String(F("Stepper")) + param2 + String(F("->Backward Steps: ")) +
-											steps + String(F(" DOUBLE")));
-									myStepper->step(steps, BACKWARD, DOUBLE);
-									success = true;
-								}
-								if (param5.equalsIgnoreCase(F("INTERLEAVE")))
-								{
-									AFMS.begin();
-									addLog(LOG_LEVEL_INFO, String(F("Stepper")) + param2 + String(F("->Backward Steps: ")) +
-											steps + String(F(" INTERLEAVE")));
-									myStepper->step(steps, BACKWARD, INTERLEAVE);
-									success = true;
-								}
-								if (param5.equalsIgnoreCase(F("MICROSTEP")))
-								{
-									AFMS.begin();
-									addLog(LOG_LEVEL_INFO, String(F("Stepper")) + param2 + String(F("->Backward Steps: ")) +
-											steps + String(F(" MICROSTEP")));
-									myStepper->step(steps, BACKWARD, MICROSTEP);
-									success = true;
-								}
-
+							if (direction == RELEASE){
+								addLog(LOG_LEVEL_INFO, String(F("Stepper")) + param2 + String(F("->Release.")));
+								Astepper->stop();
+								myStepper->release();
+							} else if (Astepper->isRunning () == false) {
+								Astepper->setSpeed(400);
+								Astepper->setAcceleration(50);
+								Astepper->setMaxSpeed(600);
+								Astepper->move(p4_int * ((direction == FORWARD)?1:-1) );
 							}
-						}
-
-						if (param3.equalsIgnoreCase(F("Release")))
-						{
-							AFMS.begin();
-							addLog(LOG_LEVEL_INFO, String(F("Stepper")) + param2 + String(F("->Release.")));
-							myStepper->release();
 							success = true;
 						}
-
 					}
 				}
-
 			}
-
 			break;
 		}
 
+		case PLUGIN_FIFTY_PER_SECOND:
+			{
+				success = true;
+				// if (myAstepper[0]->currentPosition() != Asteps[0]) for (int i = 0;i<3;i++) myAstepper[0]->run();
+				// if (myAstepper[1]->distanceToGo() != 0) for (int i = 0;i<3;i++) myAstepper[1]->run();
+				if (myAstepper[0]->distanceToGo() != 0)  myAstepper[0]->run();
+				if (myAstepper[1]->distanceToGo() != 0)  myAstepper[1]->run();
+				UserVar[event->BaseVarIndex] = myAstepper[0]->distanceToGo();			// motor 1
+				UserVar[event->BaseVarIndex + 1] = myAstepper[1]->distanceToGo();  // motor 2
+
+
+				break;
+			}
+
+		case PLUGIN_READ:
+			{
+				success = true;
+				break;
+			}
 	}
 	return success;
 }
+
+void forwardstepM1() {
+  myAFStepper[0]->step(1, FORWARD, stepType[0]);
+}
+void backwardstepM1() {
+  myAFStepper[0]->step(1, BACKWARD, stepType[0]);
+}
+
+void forwardstepM2() {
+   myAFStepper[1]->step(1, FORWARD, stepType[1]);
+}
+void backwardstepM2() {
+  myAFStepper[1]->step(1, BACKWARD, stepType[1]);
+}
+
+//stepper[1] = new AccelStepper(forwardstepM2, backwardstepM2); // use functions to step
 
 
 #endif // USES_P048

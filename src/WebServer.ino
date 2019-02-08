@@ -1955,7 +1955,7 @@ void setTaskDevice_to_TaskIndex(byte taskdevicenumber, byte taskIndex) {
 }
 
 void setBasicTaskValues(byte taskIndex, unsigned long taskdevicetimer,
-                        bool enabled, const String& name, int pin1, int pin2, int pin3) {
+                        bool enabled, const String& name, int pin1, int pin2, int pin3,   int pin4) {
     LoadTaskSettings(taskIndex); // Make sure ExtraTaskSettings are up-to-date
     byte DeviceIndex = getDeviceIndex(Settings.TaskDeviceNumber[taskIndex]);
     if (taskdevicetimer > 0) {
@@ -1971,6 +1971,7 @@ void setBasicTaskValues(byte taskIndex, unsigned long taskdevicetimer,
     if (pin1 >= 0) Settings.TaskDevicePin1[taskIndex] = pin1;
     if (pin2 >= 0) Settings.TaskDevicePin2[taskIndex] = pin2;
     if (pin3 >= 0) Settings.TaskDevicePin3[taskIndex] = pin3;
+    if (pin4 >= 0) Settings.TaskDevicePin4[taskIndex] = pin4;
     SaveTaskSettings(taskIndex);
 }
 
@@ -2079,12 +2080,14 @@ void handle_devices() {
       int pin1 = -1;
       int pin2 = -1;
       int pin3 = -1;
+      int pin4 = -1;
       update_whenset_FormItemInt(F("taskdevicepin1"), pin1);
       update_whenset_FormItemInt(F("taskdevicepin2"), pin2);
       update_whenset_FormItemInt(F("taskdevicepin3"), pin3);
+      update_whenset_FormItemInt(F("taskdevicepin4"), pin4);
       setBasicTaskValues(taskIndex, taskdevicetimer,
                          isFormItemChecked(F("TDE")), WebServer.arg(F("TDN")),
-                         pin1, pin2, pin3);
+                         pin1, pin2, pin3,pin4);
       Settings.TaskDevicePort[taskIndex] = getFormItemInt(F("TDP"), 0);
 
       for (byte controllerNr = 0; controllerNr < CONTROLLER_MAX; controllerNr++)
@@ -2275,6 +2278,12 @@ void handle_devices() {
             TXBuffer += F("<BR>GPIO-");
             TXBuffer += Settings.TaskDevicePin3[x];
           }
+
+          if (Settings.TaskDevicePin4[x] != -1)
+          {
+            TXBuffer += F("<BR>GPIO-");
+            TXBuffer += Settings.TaskDevicePin4[x];
+          }
         }
 
         html_TD();
@@ -2374,7 +2383,7 @@ void handle_devices() {
         if (Device[DeviceIndex].PullUpOption)
         {
           addFormCheckBox(F("Internal PullUp"), F("TDPPU"), Settings.TaskDevicePin1PullUp[taskIndex]);   //="taskdevicepin1pullup"
-          if ((Settings.TaskDevicePin1[taskIndex] == 16) || (Settings.TaskDevicePin2[taskIndex] == 16) || (Settings.TaskDevicePin3[taskIndex] == 16))
+          if ((Settings.TaskDevicePin1[taskIndex] == 16) || (Settings.TaskDevicePin2[taskIndex] == 16) || (Settings.TaskDevicePin3[taskIndex] == 16) || (Settings.TaskDevicePin4[taskIndex] == 16) )
             addFormNote(F("GPIO-16 (D0) does not support PullUp"));
         }
 
@@ -2388,6 +2397,7 @@ void handle_devices() {
         TempEvent.String1 = F("1st GPIO");
         TempEvent.String2 = F("2nd GPIO");
         TempEvent.String3 = F("3rd GPIO");
+        TempEvent.String4 = F("4th GPIO");
         PluginCall(PLUGIN_GET_DEVICEGPIONAMES, &TempEvent, dummyString);
 
         if (Device[DeviceIndex].connectedToGPIOpins()) {
@@ -2395,8 +2405,10 @@ void handle_devices() {
             addFormPinSelect(TempEvent.String1, F("taskdevicepin1"), Settings.TaskDevicePin1[taskIndex]);
           if (Device[DeviceIndex].Type >= DEVICE_TYPE_DUAL)
             addFormPinSelect(TempEvent.String2, F("taskdevicepin2"), Settings.TaskDevicePin2[taskIndex]);
-          if (Device[DeviceIndex].Type == DEVICE_TYPE_TRIPLE)
+          if (Device[DeviceIndex].Type >= DEVICE_TYPE_TRIPLE)
             addFormPinSelect(TempEvent.String3, F("taskdevicepin3"), Settings.TaskDevicePin3[taskIndex]);
+          if (Device[DeviceIndex].Type == DEVICE_TYPE_QUADRUPLE)
+            addFormPinSelect(TempEvent.String4, F("taskdevicepin4"), Settings.TaskDevicePin4[taskIndex]);
         }
       }
 

@@ -25,6 +25,9 @@
 #ifndef CONFIG_PIN3
   #define CONFIG_PIN3 (Settings.TaskDevicePin3[event->TaskIndex])
 #endif
+#ifndef CONFIG_PIN4
+  #define CONFIG_PIN4 (Settings.TaskDevicePin4[event->TaskIndex])
+#endif
 #ifndef CONFIG_PORT
   #define CONFIG_PORT (Settings.TaskDevicePort[event->TaskIndex])
 #endif
